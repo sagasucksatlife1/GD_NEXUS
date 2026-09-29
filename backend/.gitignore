@@ -1,0 +1,6 @@
+data/cache/
+data/events.jsonl
+data/csi_history.json
+export/
+__pycache__/
+.venv/
