@@ -23,7 +23,7 @@ def load_prices(universe: str, cfg=CONFIG) -> pd.DataFrame:
     cache = cfg.cache_dir / f"{universe}_{key}.pkl"
     if cache.exists():
         age_days = (pd.Timestamp.now().timestamp() - cache.stat().st_mtime) / 86400
-        if age_days < 3:
+        if age_days < cfg.cache_days:
             return pd.read_pickle(cache)
     try:
         if cfg.data_source == "yfinance":

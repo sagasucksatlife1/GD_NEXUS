@@ -40,6 +40,7 @@ class Config:
 
     # --- data ---
     synthetic: bool = _env("NEXUS_SYNTHETIC", False)
+    cache_days: float = _env("NEXUS_CACHE_DAYS", 3.0)      # set 9999 to always use cached prices
     data_source: str = _env("NEXUS_DATA_SOURCE", "direct")   # "direct" (plain HTTPS) | "yfinance"
     start_date: str = "2010-01-01"
     research_end: str = "2021-12-31"   # everything the loop sees
