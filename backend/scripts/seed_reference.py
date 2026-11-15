@@ -37,6 +37,7 @@ def main():
     CONFIG.ensure_dirs()
     store = EventStore(CONFIG.events_file)
     done = {e["payload"].get("reference_file") for e in store.all() if e["event_type"] == "generated"}
+    print("downloading prices from Yahoo (about 15-30 s the first time)...", flush=True)
     px = load_prices(UNIVERSE, CONFIG)
     research = px.loc[: CONFIG.research_end]
     start = pd.Timestamp(CONFIG.research_end) + pd.Timedelta(days=1)

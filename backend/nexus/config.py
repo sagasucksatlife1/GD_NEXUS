@@ -40,6 +40,7 @@ class Config:
 
     # --- data ---
     synthetic: bool = _env("NEXUS_SYNTHETIC", False)
+    data_source: str = _env("NEXUS_DATA_SOURCE", "direct")   # "direct" (plain HTTPS) | "yfinance"
     start_date: str = "2010-01-01"
     research_end: str = "2021-12-31"   # everything the loop sees
     # holdout (2022+) is touched ONCE per strategy, only after it passes research gates

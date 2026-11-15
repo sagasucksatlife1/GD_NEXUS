@@ -1,7 +1,12 @@
-"""Daily close prices. yfinance with a pickle cache; deterministic synthetic fallback."""
+"""Daily close prices from Yahoo (direct HTTPS by default, yfinance optional) with a pickle cache;
+deterministic synthetic fallback."""
 from __future__ import annotations
 
 import hashlib
+import json
+import time
+import urllib.parse
+import urllib.request
 
 import numpy as np
 import pandas as pd
@@ -21,12 +26,15 @@ def load_prices(universe: str, cfg=CONFIG) -> pd.DataFrame:
         if age_days < 3:
             return pd.read_pickle(cache)
     try:
-        import yfinance as yf
-        raw = yf.download(tickers, start=cfg.start_date, auto_adjust=True, progress=False, threads=True)
-        px = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw[["Close"]].rename(columns={"Close": tickers[0]})
+        if cfg.data_source == "yfinance":
+            import yfinance as yf
+            raw = yf.download(tickers, start=cfg.start_date, auto_adjust=True, progress=False, threads=True)
+            px = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw[["Close"]].rename(columns={"Close": tickers[0]})
+        else:
+            px = yahoo_direct(tickers, cfg.start_date)
         px = px.dropna(axis=1, thresh=int(len(px) * 0.9)).ffill().dropna()
         if px.empty or px.shape[1] < 2:
-            raise RuntimeError("yfinance returned no usable data")
+            raise RuntimeError("Yahoo returned no usable data")
         px.index = pd.DatetimeIndex(px.index).tz_localize(None)
         px.to_pickle(cache)
         return px
@@ -34,6 +42,51 @@ def load_prices(universe: str, cfg=CONFIG) -> pd.DataFrame:
         if cache.exists():
             return pd.read_pickle(cache)
         raise RuntimeError(f"No data for {universe}: {exc}. Set NEXUS_SYNTHETIC=1 to run offline.") from exc
+
+
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+
+
+def _yahoo_series(ticker: str, start: str) -> pd.Series:
+    """Dividend/split-adjusted daily closes from Yahoo's public chart endpoint (plain HTTPS, no extra packages)."""
+    p1 = int(pd.Timestamp(start).timestamp())
+    p2 = int(time.time()) + 86400
+    q = urllib.parse.urlencode({"period1": p1, "period2": p2, "interval": "1d",
+                                "events": "div,split", "includeAdjustedClose": "true"})
+    last = None
+    for host in ("query1", "query2"):
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    f"https://{host}.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker)}?{q}",
+                    headers={"User-Agent": _UA, "Accept": "application/json"})
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    res = json.loads(r.read())["chart"]["result"][0]
+                ts = res.get("timestamp") or []
+                ind = res["indicators"]
+                vals = (ind.get("adjclose") or [{}])[0].get("adjclose") or ind["quote"][0]["close"]
+                off = res.get("meta", {}).get("gmtoffset", 0) or 0
+                idx = pd.to_datetime([t + off for t in ts], unit="s").normalize()
+                s = pd.Series(vals, index=idx, dtype="float64", name=ticker)
+                return s[~s.index.duplicated(keep="last")]
+            except Exception as e:  # noqa: BLE001
+                last = e
+                time.sleep(1.5 * (attempt + 1))
+    raise RuntimeError(f"{ticker}: {last}")
+
+
+def yahoo_direct(tickers: list[str], start: str) -> pd.DataFrame:
+    cols, failed = {}, []
+    for t in tickers:
+        try:
+            cols[t] = _yahoo_series(t, start)
+        except Exception as e:  # noqa: BLE001
+            failed.append(str(e))
+        time.sleep(0.3)
+    if failed:
+        print(f"[data] {len(failed)} ticker(s) failed: {failed[:3]}")
+    return pd.DataFrame(cols).sort_index()
 
 
 def split_research_holdout(px: pd.DataFrame, cfg=CONFIG):

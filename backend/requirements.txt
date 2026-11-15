@@ -6,4 +6,4 @@ numpy>=1.26
 scipy>=1.11
 scikit-learn>=1.3
 statsmodels>=0.14
-yfinance>=0.2.40
+# yfinance is optional (NEXUS_DATA_SOURCE=yfinance); the default downloader needs no extra package
