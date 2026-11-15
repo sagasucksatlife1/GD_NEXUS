@@ -40,7 +40,19 @@ export const AGENT = {
         philosophy: "Price an asset against a synthetic twin built from its peers, trade the gap when it stretches." },
   M8: { name: "quant_ml_engineer", method: "3-Feature Orthogonal Ensemble", color: "#c084fc",
         philosophy: "Three unrelated signals, made orthogonal, learned walk-forward. No single feature dominates." },
+  M9: { name: "regime_architect", method: "Causal Regime-Switching Allocator", color: "#f59e0b",
+        philosophy: "Read the market state from correlation, dispersion and breadth, then run the sleeve that fits it." },
+  M10: { name: "lead_lag_networker", method: "Information-Diffusion Network", color: "#22d3ee",
+         philosophy: "News reaches leaders first. Trade the followers before they catch up." },
+  M11: { name: "behavioral_anchor", method: "Anchoring & Attention Anomalies", color: "#f472b6",
+         philosophy: "52-week-high anchoring, lottery demand, frog-in-the-pan: trade the biases that persist." },
+  REF: { name: "reference_book", method: "Published strategies (not agent output)", color: "#10b981",
+         philosophy: "Well-known published methods, run through the same sandbox and holdout, as the base book." },
 };
+
+/** LLM agents (generate strategies). REF is the reference book and is not an agent. */
+export const AGENT_CODES = ["M6", "M8", "M9", "M10", "M11"];
+export const ALL_AGENTS = [...AGENT_CODES, "REF"];
 
 export const COLUMNS = [
   { id: "GENERATED", label: "Generated", color: "#38bdf8" },

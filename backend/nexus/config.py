@@ -57,7 +57,7 @@ class Config:
 
     # --- loop ---
     max_attempts: int = _env("NEXUS_MAX_ATTEMPTS", 4)       # v1 + up to 3 repairs
-    agents_enabled: tuple = ("M6", "M8")
+    agents_enabled: tuple = ("M6", "M8", "M9", "M10", "M11")
     cycle_sleep_s: float = _env("NEXUS_CYCLE_SLEEP", 2.0)
 
     # --- sandbox ---

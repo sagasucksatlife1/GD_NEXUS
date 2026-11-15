@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "../lib/router";
 import { useData } from "../lib/data";
 import { Icon, StateBadge, ErrorBoundary, Loading, ErrorBox } from "./ui";
-import { AGENT, ERROR_TYPE, clock, prettyName } from "../lib/format";
+import { AGENT, AGENT_CODES, ERROR_TYPE, clock, prettyName } from "../lib/format";
 
 export const NAV = [
   { group: "Loop" },
@@ -12,6 +12,9 @@ export const NAV = [
   { group: "Agents" },
   { to: "/terminal/agents/M6", label: "M6 stat-arb", icon: "agent", key: "m6" },
   { to: "/terminal/agents/M8", label: "M8 ML engineer", icon: "agent", key: "m8" },
+  { to: "/terminal/agents/M9", label: "M9 regime switch", icon: "agent", key: "m9" },
+  { to: "/terminal/agents/M10", label: "M10 lead-lag", icon: "agent", key: "m10" },
+  { to: "/terminal/agents/M11", label: "M11 behavioural", icon: "agent", key: "m11" },
   { group: "Markets" },
   { to: "/terminal/observatory", label: "Observatory", icon: "eye", key: "observatory" },
   { to: "/terminal/portfolio", label: "Portfolio", icon: "chart", key: "portfolio" },
@@ -58,7 +61,7 @@ function Lights() {
   const running = c?.status === "running";
   return (
     <div className="row hide-sm" style={{ gap: 12 }}>
-      {["M6", "M8"].map((a) => (
+      {AGENT_CODES.map((a) => (
         <span key={a} className="light" style={{ "--c": enabled.includes(a) && running ? AGENT[a].color : "#475569" }} title={`${a} ${enabled.includes(a) ? "enabled" : "disabled"}`}><i />{a}</span>
       ))}
       <span className="light" style={{ "--c": on(h?.llm?.ok) }} title={h?.llm?.error || h?.llm?.model || "LLM"}><i />LLM</span>
@@ -110,8 +113,7 @@ function NavRail() {
     dossiers: summary.lineages,
     graveyard: summary.dead,
     portfolio: summary.validated,
-    m6: summary.agents.M6.lineages,
-    m8: summary.agents.M8.lineages,
+    ...Object.fromEntries(AGENT_CODES.map((a) => [a.toLowerCase(), summary.agents[a]?.lineages])),
   };
   return (
     <nav className="navrail" aria-label="Terminal">

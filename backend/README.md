@@ -35,6 +35,22 @@ curl -X POST localhost:8000/api/control/start
 python scripts/export.py --out ../nexus-frontend/public/data --csi
 ```
 
+## Overnight run (macOS) with the reference book
+
+```bash
+cd backend && source .venv/bin/activate
+python scripts/seed_reference.py                 # once: 4 published strategies -> REF book (real yfinance data)
+caffeinate -dims nohup uvicorn nexus.server:app --port 8000 > nexus.log 2>&1 &
+curl -X POST localhost:8000/api/csi/rebuild && curl -X POST localhost:8000/api/control/start
+tail -f nexus.log                                # optional
+# morning:
+python scripts/export.py --out ../frontend/public/data --csi
+```
+
+Agents: M6 stat-arb, M8 ML ensemble, M9 regime switch (CSI universe), M10 lead-lag network (M8 stocks),
+M11 behavioural anomalies (M8 stocks). REF = reference book (`reference/*.py`), tagged `source: "reference"`,
+never presented as agent output. All use data the loop already downloads; no new data sources.
+
 ## Porting your old code
 
 1. **Prompts.** Paste the original Model 6 and Model 8 system prompts into `PERSONA_PROMPT` in `nexus/agents/personas.py`. Keep the contract and output format that get appended to them.

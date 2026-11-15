@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useData, API_URL } from "../../lib/data";
 import { PageHead, Panel, Empty, Icon, Badge, Stat } from "../../components/ui";
-import { AGENT, time } from "../../lib/format";
+import { AGENT, AGENT_CODES, time } from "../../lib/format";
 
 export default function Control() {
   const { mode, setMode, live } = useData();
@@ -64,7 +64,7 @@ export default function Control() {
             <div>
               <div className="label" style={{ marginBottom: 8 }}>Agents</div>
               <div className="row-wrap">
-                {["M6", "M8"].map((a) => {
+                {AGENT_CODES.map((a) => {
                   const on = enabled.includes(a);
                   return (
                     <button key={a} className={`chip ${on ? "on" : ""}`} style={{ "--c": AGENT[a].color, padding: "6px 12px" }} disabled={!!busy}

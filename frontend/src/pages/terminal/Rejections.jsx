@@ -1,3 +1,4 @@
+import { ALL_AGENTS } from "../../lib/format";
 import React, { useMemo } from "react";
 import { useData } from "../../lib/data";
 import { Link, useQuery, useRouter } from "../../lib/router";
@@ -44,7 +45,7 @@ export default function Rejections() {
 
       <div className="row-wrap" data-testid="rejection-filters">
         <span className="label">Agent</span>
-        {["", "M6", "M8"].map((a) => (
+        {["", ...ALL_AGENTS].map((a) => (
           <button key={a || "all"} className={`chip ${agent === a ? "on" : ""}`} onClick={() => setParam("agent", a)}>{a || "All"}</button>
         ))}
         <span className="label" style={{ marginLeft: 10 }}>Gate</span>

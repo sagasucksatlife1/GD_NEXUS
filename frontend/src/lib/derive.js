@@ -1,3 +1,5 @@
+import { ALL_AGENTS } from "./format";
+
 /**
  * Everything on the site is derived from ONE append-only event stream (repair_log.json / GET /api/events).
  * That is what makes replay work: slice the stream at the scrubber, re-derive, the whole UI rewinds.
@@ -134,7 +136,7 @@ function taxonomy(rejects) {
 
 function summarize(events, lineages, rejects) {
   const agents = {};
-  for (const a of ["M6", "M8"]) {
+  for (const a of ALL_AGENTS) {
     const al = lineages.filter((l) => l.agent === a);
     const ar = rejects.filter((e) => e.agent === a);
     const val = al.filter((l) => l.status === "VALIDATED");
@@ -204,32 +206,78 @@ export function drawdown(values) {
   return values.map((v) => { peak = Math.max(peak, v); return v / peak - 1; });
 }
 
+/** Weekly return series of a lineage: research curve chained with the sealed-holdout curve (2022 → today). */
+function weeklyReturns(L) {
+  const out = new Map();
+  const add = (eq, prevStart) => {
+    if (!eq?.dates?.length) return;
+    let prev = prevStart;
+    eq.dates.forEach((d, i) => {
+      const v = eq.values[i];
+      if (prev != null && prev > 0) out.set(d, v / prev - 1);
+      prev = v;
+    });
+  };
+  add(L.best.equity, null);
+  add(L.best.holdout?.equity, 1);
+  return out;
+}
+
+export const ALLOC = { lookback: 26, minObs: 8, cap: 0.4, minVol: 0.01 };
+
+/** Annualised vol of the last `lookback` weekly returns; null if too short or flat (strategy sitting in cash). */
+function trailingVol(all) {
+  const h = all.slice(-ALLOC.lookback);
+  if (h.length < ALLOC.minObs) return null;
+  const m = h.reduce((s, x) => s + x, 0) / h.length;
+  const v = Math.sqrt(h.reduce((s, x) => s + (x - m) ** 2, 0) / (h.length - 1)) * Math.sqrt(52);
+  return v >= ALLOC.minVol ? v : null;
+}
+
+/** Inverse-volatility weights with a per-strategy cap; excess is redistributed, any remainder is cash. */
+function invVolWeights(vols, cap) {
+  const ids = Object.keys(vols);
+  if (!ids.length) return {};
+  const c = Math.max(cap, 1 / ids.length);
+  const inv = Object.fromEntries(ids.map((k) => [k, 1 / Math.max(vols[k], 1e-4)]));
+  let w = {}, free = ids.slice(), budget = 1;
+  for (let it = 0; it < ids.length && free.length; it++) {
+    const tot = free.reduce((s, k) => s + inv[k], 0);
+    const over = free.filter((k) => (inv[k] / tot) * budget > c);
+    if (!over.length) { free.forEach((k) => (w[k] = (inv[k] / tot) * budget)); free = []; break; }
+    over.forEach((k) => { w[k] = c; budget -= c; });
+    free = free.filter((k) => !over.includes(k));
+  }
+  return w;
+}
+
 /**
- * Equal-weight book of validated lineages (research-window weekly curves), with and without CSI gating.
- * Gating uses the regime state of the PREVIOUS week, so the rule never peeks at the week it trades.
+ * The live book: every validated lineage, weekly, research window chained into the holdout so it runs to today.
+ * Weights are inverse trailing volatility (26 weeks, decided with data up to the previous week), capped per
+ * strategy. The CSI-gated book holds cash in any week that follows a TURBULENT or CRITICAL reading.
  */
 export function abstentionBook(lineages, csi) {
   const val = lineages.filter((l) => l.status === "VALIDATED" && l.best?.equity?.dates?.length > 3);
   if (!val.length) return null;
-  const rets = new Map();
-  for (const L of val) {
-    const { dates, values } = L.best.equity;
-    for (let i = 1; i < dates.length; i++) {
-      const d = dates[i];
-      const r = values[i] / values[i - 1] - 1;
-      const cur = rets.get(d) || [];
-      cur.push(r);
-      rets.set(d, cur);
-    }
-  }
-  const dates = [...rets.keys()].sort();
+  const series = val.map((L) => ({ L, r: weeklyReturns(L) }));
+  const dates = [...new Set(series.flatMap((x) => [...x.r.keys()]))].sort();
+  const hist = new Map(val.map((L) => [L.id, []]));
   const lookup = stateLookup(csi);
-  let eqU = 1, eqG = 1, gatedWeeks = 0, known = 0;
+  let eqU = 1, eqG = 1, gatedWeeks = 0, known = 0, prevState = null;
   const outDates = [], u = [], g = [], states = [];
-  let prevState = null;
   for (const d of dates) {
-    const arr = rets.get(d);
-    const r = arr.reduce((s, x) => s + x, 0) / arr.length;
+    // weights from history strictly before d
+    const vols = {};
+    for (const { L } of series) {
+      const v = trailingVol(hist.get(L.id));
+      if (v != null) vols[L.id] = v;
+    }
+    const w = invVolWeights(vols, ALLOC.cap);
+    let r = 0;
+    for (const { L, r: rs } of series) {
+      const x = rs.get(d);
+      if (x != null) { if (w[L.id]) r += w[L.id] * x; hist.get(L.id).push(x); }
+    }
     const off = prevState === "TURBULENT" || prevState === "CRITICAL";
     if (prevState) known++;
     if (off) gatedWeeks++;
@@ -238,10 +286,23 @@ export function abstentionBook(lineages, csi) {
     outDates.push(d); u.push(eqU); g.push(eqG); states.push(prevState);
     prevState = lookup(d);
   }
+  // allocation for the coming week: recompute from the full history
+  const nextVols = {};
+  for (const { L } of series) {
+    const v = trailingVol(hist.get(L.id));
+    if (v != null) nextVols[L.id] = v;
+  }
+  const nextW = invVolWeights(nextVols, ALLOC.cap);
+  const gateOff = prevState === "TURBULENT" || prevState === "CRITICAL";
+  const allocation = val.map((L) => ({
+    L, vol: nextVols[L.id] ?? null, weight: nextW[L.id] || 0, gatedWeight: gateOff ? 0 : nextW[L.id] || 0,
+  })).sort((a, b) => b.weight - a.weight);
+  const invested = allocation.reduce((s, a) => s + a.weight, 0);
   return {
     n: val.length, strategies: val, dates: outDates, ungated: u, gated: g, states,
     statsU: curveStats(u), statsG: curveStats(g),
     abstainShare: known ? gatedWeeks / known : 0, csiCoverage: known / Math.max(1, dates.length),
+    allocation, asOf: outDates[outDates.length - 1], csiState: prevState, gateOff, cash: 1 - invested,
   };
 }
 

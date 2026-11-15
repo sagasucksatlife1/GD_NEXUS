@@ -193,17 +193,17 @@ function Agents() {
   const card = (k, schematic) => {
     const a = AGENT[k], s = A[k];
     return (
-      <Reveal delay={k === "M8" ? 150 : 0}>
+      <Reveal delay={k === "M6" ? 0 : 100}>
         <div className="panel" style={{ padding: 20, borderTop: `2px solid ${a.color}` }}>
           <div className="row"><AgentBadge agent={k} /><span className="mono" style={{ color: a.color, fontSize: 13 }}>{a.name}</span></div>
           <h3 style={{ fontSize: 22, fontWeight: 700, marginTop: 10 }}>{a.method}</h3>
           <p className="prose-sm" style={{ marginTop: 6 }}>{a.philosophy}</p>
-          <div style={{ margin: "16px 0 6px" }}>{schematic}</div>
-          <div className="mono muted" style={{ fontSize: 10 }}>schematic</div>
+          {schematic && <div style={{ margin: "16px 0 6px" }}>{schematic}</div>}
+          {schematic && <div className="mono muted" style={{ fontSize: 10 }}>schematic</div>}
           <div className="grid g3" style={{ marginTop: 14 }}>
-            <div className="counter"><b style={{ fontSize: 24 }}>{s.versions}</b><span>versions</span></div>
-            <div className="counter"><b style={{ fontSize: 24 }}>{s.rejectRate != null ? `${Math.round(s.rejectRate * 100)}%` : "—"}</b><span>rejected</span></div>
-            <div className="counter"><b style={{ fontSize: 24 }}>{s.validated}</b><span>validated</span></div>
+            <div className="counter"><b style={{ fontSize: 24 }}>{s?.versions ?? 0}</b><span>versions</span></div>
+            <div className="counter"><b style={{ fontSize: 24 }}>{s?.rejectRate != null ? `${Math.round(s.rejectRate * 100)}%` : "—"}</b><span>rejected</span></div>
+            <div className="counter"><b style={{ fontSize: 24 }}>{s?.validated ?? 0}</b><span>validated</span></div>
           </div>
         </div>
       </Reveal>
@@ -212,12 +212,17 @@ function Agents() {
   return (
     <section className="sec">
       <div className="sec-inner">
-        <div className="sec-kicker">Two agents, two ways of thinking</div>
-        <h2>One trades mispricing. One learns from orthogonal signals.</h2>
-        <p className="lede">Both run locally on an open model. Neither is trusted: everything they write goes through the same sandbox.</p>
+        <div className="sec-kicker">Five agents, five ways of thinking</div>
+        <h2>Mispricing, machine learning, regimes, information flow and behavioural bias.</h2>
+        <p className="lede">All five run locally on an open model. None is trusted: everything they write goes through the same sandbox.</p>
         <div className="grid g2" style={{ marginTop: 34, gap: 18 }}>
           {card("M6", <SpreadSchematic />)}
           {card("M8", <OrthoSchematic />)}
+        </div>
+        <div className="grid g3" style={{ marginTop: 18, gap: 18 }}>
+          {card("M9", null)}
+          {card("M10", null)}
+          {card("M11", null)}
         </div>
       </div>
     </section>

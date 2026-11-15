@@ -7,7 +7,7 @@ Event shape (frozen):
   "strategy_id": str,          # == lineage_root (versions tracked via "version")
   "lineage_root": str,
   "version": int,
-  "agent": "M6" | "M8",
+  "agent": "M6" | "M8" | "M9" | "M10" | "M11" | "REF",
   "event_type": "generated" | "sandbox_reject" | "diagnosis" | "patch" | "rebacktest" | "verdict",
   "payload": {...}             # only the fields relevant to event_type
 }
@@ -149,7 +149,8 @@ class EventStore:
         lins = self.lineages()
         rejects = [e for e in evts if e["event_type"] == "sandbox_reject"]
         by_agent = {}
-        for a in ("M6", "M8"):
+        from .agents.personas import AGENTS
+        for a in [*AGENTS, "REF"]:
             al = [l for l in lins.values() if l["agent"] == a]
             ar = [e for e in rejects if e["agent"] == a]
             validated = [l for l in al if l["status"] == "VALIDATED"]

@@ -1,3 +1,4 @@
+import { ALL_AGENTS } from "../../lib/format";
 import React, { useEffect, useMemo, useState } from "react";
 import { useData } from "../../lib/data";
 import { Link, useRouter } from "../../lib/router";
@@ -16,7 +17,7 @@ export function DossierList() {
     <div className="col" style={{ gap: 12 }}>
       <PageHead title="Strategy dossiers" desc="One dossier per lineage. A lineage is the original idea plus every repaired version of it." />
       <div className="row-wrap">
-        {["", "M6", "M8"].map((a) => <button key={a || "all"} className={`chip ${agent === a ? "on" : ""}`} onClick={() => setAgent(a)}>{a || "All agents"}</button>)}
+        {["", ...ALL_AGENTS].map((a) => <button key={a || "all"} className={`chip ${agent === a ? "on" : ""}`} onClick={() => setAgent(a)}>{a || "All agents"}</button>)}
         <span style={{ width: 10 }} />
         {["", "IN_PROGRESS", "VALIDATED", "DEAD"].map((s) => (
           <button key={s || "all"} className={`chip ${status === s ? "on" : ""}`} style={{ "--c": VERDICT[s] }} onClick={() => setStatus(s)}>
@@ -32,7 +33,7 @@ export function DossierList() {
               <tbody>
                 {rows.map((L) => (
                   <tr key={L.id} className="clickable" onClick={() => navigate(`/terminal/dossiers/${L.id}`)}>
-                    <td style={{ color: "var(--text)" }}>{prettyName(L)}{L.source === "legacy" && <span className="amber" style={{ fontSize: 10, marginLeft: 6 }}>legacy</span>}</td>
+                    <td style={{ color: "var(--text)" }}>{prettyName(L)}{L.source === "legacy" && <span className="amber" style={{ fontSize: 10, marginLeft: 6 }}>legacy</span>}{L.source === "reference" && <span style={{ fontSize: 10, marginLeft: 6, color: "#10b981" }}>reference</span>}</td>
                     <td><AgentBadge agent={L.agent} /></td>
                     <td><StatusBadge status={L.status} /></td>
                     <td className="num">{L.attempts}</td>
@@ -93,7 +94,7 @@ export function DossierDetail({ id }) {
       <div className="panel" style={{ padding: 16 }}>
         <div className="row-wrap" style={{ gap: 12 }}>
           <AgentBadge agent={L.agent} full />
-          {L.source === "legacy" && <Badge color="#f59e0b">imported from ai-hedge-fund</Badge>}
+          {L.source === "legacy" && <Badge color="#f59e0b">imported from ai-hedge-fund</Badge>}{L.source === "reference" && <Badge color="#10b981">reference strategy · published method</Badge>}
           <span className="spacer" />
           {L.status !== "IN_PROGRESS" ? <Stamp verdict={L.status} /> : <StatusBadge status={L.status} />}
         </div>

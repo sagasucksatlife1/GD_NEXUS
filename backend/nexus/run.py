@@ -10,7 +10,7 @@ from .orchestrator import Orchestrator
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cycles", type=int, default=5)
-    ap.add_argument("--agents", default="M6,M8")
+    ap.add_argument("--agents", default="M6,M8,M9,M10,M11")
     ap.add_argument("--max-attempts", type=int, default=None)
     args = ap.parse_args()
 

@@ -9,9 +9,10 @@ export default function Agents({ agent }) {
   const { summary, lineages } = useData();
   const { navigate } = useRouter();
   const a = AGENT[agent];
-  if (!a) return <Panel><Empty title="Unknown agent">Only M6 and M8 exist.</Empty></Panel>;
+  if (!a) return <Panel><Empty title="Unknown agent">Agents: M6, M8, M9, M10, M11, and the REF reference book.</Empty></Panel>;
   const s = summary.agents[agent];
   const other = agent === "M6" ? "M8" : "M6";
+  if (!summary.agents[agent]) return <Panel><Empty title="No data">Nothing recorded for {agent} yet.</Empty></Panel>;
   const o = summary.agents[other];
   const mine = lineages.filter((l) => l.agent === agent);
   const donut = Object.entries(s.taxonomy).map(([k, v]) => ({ label: ERROR_TYPE[k]?.label || k, value: v, color: ERROR_TYPE[k]?.color || "#64748b" }));

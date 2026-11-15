@@ -4,7 +4,8 @@ import { Link } from "../../lib/router";
 import { PageHead, Panel, Stat, Empty, AgentBadge } from "../../components/ui";
 import { LineChart } from "../../components/charts";
 import { abstentionBook, drawdown, stateRuns } from "../../lib/derive";
-import { REGIME, num, pct, prettyName } from "../../lib/format";
+import { REGIME, num, pct, pctAbs, prettyName } from "../../lib/format";
+import { ALLOC } from "../../lib/derive";
 
 export default function Portfolio() {
   const { lineages, csi } = useData();
@@ -26,7 +27,7 @@ export default function Portfolio() {
   return (
     <div className="col" style={{ gap: 12 }}>
       <PageHead title="Portfolio"
-        desc="Equal-weight book of every validated strategy, over the research window. The gated version holds cash in any week that follows a turbulent or critical CSI reading."
+        desc={`Every validated strategy, weighted by inverse trailing volatility (${ALLOC.lookback} weeks, capped at ${Math.round(ALLOC.cap * 100)}% each). The curve runs through the research window and on into the sealed holdout, up to ${book.asOf}. The gated version holds cash in any week that follows a turbulent or critical CSI reading.`}
       />
 
       <div className="grid g4">
@@ -35,6 +36,25 @@ export default function Portfolio() {
         <Stat label="Sharpe, CSI-gated" value={num(G?.sharpe)} sub={`max DD ${pct(G?.maxdd)}`} accent="#38bdf8" />
         <Stat label="Weeks in cash" value={`${Math.round(book.abstainShare * 100)}%`} sub={book.csiCoverage < 0.95 ? `CSI covers ${Math.round(book.csiCoverage * 100)}% of weeks` : "abstention rate"} accent="#f59e0b" />
       </div>
+
+      <Panel title="Live allocation" sub={`weights for the week after ${book.asOf} · CSI ${book.csiState || "unknown"}${book.gateOff ? " → gate is ON, book in cash" : ""}`} flush>
+        <table className="data" data-testid="live-allocation">
+          <thead><tr><th>Strategy</th><th>Agent</th><th className="num">Trailing vol</th><th className="num">Weight</th><th style={{ width: "30%" }}></th><th className="num">After CSI gate</th></tr></thead>
+          <tbody>
+            {book.allocation.map(({ L, vol, weight, gatedWeight }) => (
+              <tr key={L.id}>
+                <td><Link to={`/terminal/dossiers/${L.id}`} style={{ color: "var(--text)" }}>{prettyName(L)}</Link>{L.source === "reference" && <span style={{ fontSize: 10, marginLeft: 6, color: "#10b981" }}>reference</span>}</td>
+                <td><AgentBadge agent={L.agent} /></td>
+                <td className="num">{vol != null ? pctAbs(vol, 1) : "—"}</td>
+                <td className="num">{pctAbs(weight, 1)}</td>
+                <td><div style={{ height: 8, borderRadius: 4, background: "var(--line, #1e293b)" }}><div style={{ width: `${weight * 100}%`, height: 8, borderRadius: 4, background: "#10b981" }} /></div></td>
+                <td className="num">{pctAbs(gatedWeight, 1)}</td>
+              </tr>
+            ))}
+            <tr><td className="dim">Cash</td><td /><td /><td className="num">{pctAbs(book.cash, 1)}</td><td /><td className="num">{pctAbs(book.gateOff ? 1 : book.cash, 1)}</td></tr>
+          </tbody>
+        </table>
+      </Panel>
 
       <Panel title="Abstention test" sub="shaded weeks were held in cash by the gated book">
         <LineChart dates={book.dates} bands={bands} height={300} yFormat={(v) => v.toFixed(2)}
@@ -63,7 +83,7 @@ export default function Portfolio() {
             </tbody>
           </table>
           <p className="prose-sm" style={{ padding: "10px 14px" }}>
-            Computed in the browser from the validated strategies' weekly research curves and the causal CSI, lagged one week. Weights are equal; HRP weighting is the next step for this page.
+            Computed in the browser from the validated strategies' weekly research and holdout curves and the causal CSI, lagged one week. Weights use only returns up to the previous week.
           </p>
         </Panel>
       </div>
