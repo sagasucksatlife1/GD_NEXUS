@@ -1,6 +1,7 @@
 """Seed well-known, published strategies into the book as REFERENCE strategies.
 
-    python scripts/seed_reference.py            (idempotent: skips ones already seeded)
+    python scripts/seed_reference.py            (idempotent; only seeds strategies with a positive 2022+ holdout)
+    python scripts/seed_reference.py --all      (seed every one regardless)
 
 Each file in reference/ is run through the same sandbox (static, runtime, contract, causal audit),
 backtested on the research window and then on the 2022+ holdout, on the real CSI universe prices.
@@ -28,6 +29,11 @@ UNIVERSE = "CSI"
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--all", action="store_true",
+                    help="seed every reference strategy, even ones with a negative 2022+ holdout")
+    args = ap.parse_args()
     CONFIG.ensure_dirs()
     store = EventStore(CONFIG.events_file)
     done = {e["payload"].get("reference_file") for e in store.all() if e["event_type"] == "generated"}
@@ -58,6 +64,11 @@ def main():
         n_trials = store.trials_count()
         r = bt.backtest(res.weights, research, n_trials, cfg=CONFIG)
         h = bt.backtest(full.weights, px, n_trials, start=start, cfg=CONFIG)
+        hs = h["stats"]
+        if not args.all and not ((hs["ann_ret"] or 0) > 0 and (hs["sharpe"] or 0) > 0):
+            print(f"NOT SEEDED {name:<28} holdout {hs['start']}..{hs['end']} ann.ret {hs['ann_ret']} "
+                  f"Sharpe {hs['sharpe']} (negative since 2022; use --all to include anyway)")
+            continue
 
         emit("generated", {"name": name, "thesis": thesis, "code": code, "source": "reference",
                            "reference_file": py.name})
@@ -65,9 +76,9 @@ def main():
         emit("verdict", {"verdict": "VALIDATED", "attempts": 1,
                          "holdout": {"stats": h["stats"], "equity": h["equity"], "window": "holdout"},
                          "note": "reference strategy (published method), seeded directly into the book"})
-        rs, hs = r["stats"], h["stats"]
-        print(f"seeded {name:<28} research Sharpe {rs['sharpe']}  holdout Sharpe {hs['sharpe']} "
-              f"ann.ret {hs['ann_ret']}  maxDD {hs['maxdd']}")
+        rs = r["stats"]
+        print(f"SEEDED {name:<28} holdout {hs['start']}..{hs['end']}  ann.ret {hs['ann_ret']}  "
+              f"Sharpe {hs['sharpe']}  maxDD {hs['maxdd']}  (research Sharpe {rs['sharpe']})")
 
 
 if __name__ == "__main__":

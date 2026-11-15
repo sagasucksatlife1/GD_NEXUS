@@ -77,7 +77,8 @@ class Config:
     min_holdout_sharpe: float = _env("NEXUS_MIN_HOLDOUT_SHARPE", 0.0)
 
     # --- server ---
-    cors_origins: tuple = ("http://localhost:5173", "http://127.0.0.1:5173")
+    cors_origins: tuple = ("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173",
+                          "https://gd-nexus.vercel.app")
 
     def ensure_dirs(self):
         for p in (self.data_dir, self.cache_dir, self.export_dir):
