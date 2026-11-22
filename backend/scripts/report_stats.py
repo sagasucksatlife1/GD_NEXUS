@@ -77,7 +77,7 @@ def main():
         n = sum(v["days"] for v in c["per_state"].values()) or 1
         for st, v in c["per_state"].items():
             print(f"  {st:<10} days {v['days']:>5} ({v['days'] / n * 100:4.1f}%)  next-day ann.ret "
-                  f"{f(v['next_day_ann_ret'], True)}  ann.vol {v['next_day_ann_vol'] * 100:.1f}%")
+                  f"{f(v['next_day_ann_ret'], True)}  ann.vol {f(v['next_day_ann_vol'] and abs(v['next_day_ann_vol']), True)}")
     print("\nTables 7.4/7.5 (live allocation, always-on vs CSI-gated book): see the Portfolio page.")
 
 
