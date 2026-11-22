@@ -6,6 +6,7 @@ import { PageHead, Panel, AgentBadge, StatusBadge, ErrorTag, Empty, Stamp, Stats
 import { CodeBlock, DiffView } from "../../components/code";
 import { LineChart, Sparkline } from "../../components/charts";
 import { VERDICT, time, clock, prettyName, num } from "../../lib/format";
+import { downloadReport } from "../../lib/exportReport";
 
 export function DossierList() {
   const { lineages } = useData();
@@ -15,7 +16,11 @@ export function DossierList() {
   const rows = lineages.filter((l) => (!agent || l.agent === agent) && (!status || l.status === status));
   return (
     <div className="col" style={{ gap: 12 }}>
-      <PageHead title="Strategy dossiers" desc="One dossier per lineage. A lineage is the original idea plus every repaired version of it." />
+      <PageHead title="Strategy dossiers" desc="One dossier per lineage. A lineage is the original idea plus every repaired version of it."
+        right={<button className="btn primary" disabled={!rows.length} data-testid="export-all"
+          onClick={() => downloadReport(rows, `nexus_strategies_${(agent || "all").toLowerCase()}_${(status || "any").toLowerCase()}.html`,
+            `NEXUS strategies · ${agent || "all agents"} · ${status ? status.replace("_", " ").toLowerCase() : "any status"}`)}>
+          <Icon name="file" size={12} /> Export {rows.length} {rows.length === 1 ? "strategy" : "strategies"}</button>} />
       <div className="row-wrap">
         {["", ...ALL_AGENTS].map((a) => <button key={a || "all"} className={`chip ${agent === a ? "on" : ""}`} onClick={() => setAgent(a)}>{a || "All agents"}</button>)}
         <span style={{ width: 10 }} />
@@ -96,6 +101,8 @@ export function DossierDetail({ id }) {
           <AgentBadge agent={L.agent} full />
           {L.source === "legacy" && <Badge color="#f59e0b">imported from ai-hedge-fund</Badge>}{L.source === "reference" && <Badge color="#10b981">reference strategy · published method</Badge>}
           <span className="spacer" />
+          <button className="btn sm" data-testid="export-one" onClick={() => downloadReport([L], `nexus_${L.id}.html`, `NEXUS strategy · ${prettyName(L)}`)}>
+            <Icon name="file" size={12} /> Export</button>
           {L.status !== "IN_PROGRESS" ? <Stamp verdict={L.status} /> : <StatusBadge status={L.status} />}
         </div>
         <h1 className="mono" style={{ fontSize: 22, fontWeight: 700, marginTop: 10, wordBreak: "break-word" }}>{prettyName(L)}</h1>
